@@ -10,18 +10,16 @@ fn main() {
             Ok(mut _stream) => {
                 let _bytes_read = _stream.read(&mut buffer).unwrap();
                 let data = std::str::from_utf8(&buffer[.._bytes_read]).expect("Invalid UTF-8");
-                let path_lines: Vec<&str> = data
-                    .lines()
-                    .rev()
-                    .last()
-                    .unwrap()
-                    .split_whitespace()
-                    .collect();
+                let request_line: Vec<&str> = data.lines().take(3).collect();
 
+                let (path, _host, agent) = (request_line[0], request_line[1], request_line[2]);
                 let mut response: String = String::from("");
+                let path_line: Vec<&str> = path.split_whitespace().collect();
+                let user_agent = agent.split_whitespace().last().unwrap();
+
                 let prefix = "/echo/";
-                if path_lines[1].starts_with(prefix) {
-                    if let Some((_prefix, content)) = path_lines[1].split_once(prefix) {
+                if path_line[1].starts_with(prefix) {
+                    if let Some((_prefix, content)) = path_line[1].split_once(prefix) {
                         let content_length = content.as_bytes().len();
                         let content_type = "text/plain";
                         response = format!(
@@ -29,7 +27,13 @@ fn main() {
                             content_type, content_length, content
                         )
                     }
-                } else if path_lines[1] == "/" {
+                } else if path_line[1].starts_with("/user-agent") {
+                    response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}",
+                        user_agent.len(),
+                        user_agent
+                    );
+                } else if path_line[1] == "/" {
                     response = format!(
                         "HTTP/1.1 200 OK\r\n\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n"
                     );
